@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.41.2.15936",
-      "templateHash": "6099489055022257657"
+      "templateHash": "10058217869091246799"
     }
   },
   "parameters": {
@@ -144,7 +144,7 @@
         "httpsOnly": true,
         "siteConfig": {
           "linuxFxVersion": "[format('DOCKER|{0}/web:{1}', variables('imageBase'), parameters('imageTag'))]",
-          "appSettings": "[flatten(createArray(createArray(createObject('name', 'WEBSITES_PORT', 'value', '80'), createObject('name', 'WEBSITES_ENABLE_APP_SERVICE_STORAGE', 'value', 'false'), createObject('name', 'IMAGE_TAG', 'value', parameters('imageTag')), createObject('name', 'API_UPSTREAM', 'value', 'localhost:8081'), createObject('name', 'NLP_UPSTREAM', 'value', 'localhost:5000')), if(parameters('enableAppInsights'), createArray(createObject('name', 'APPLICATIONINSIGHTS_CONNECTION_STRING', 'value', coalesce(tryGet(if(parameters('enableAppInsights'), reference(resourceId('Microsoft.Insights/components', variables('insightsName')), '2020-02-02', 'full'), null()), 'properties', 'ConnectionString'), ''))), createArray())))]"
+          "appSettings": "[flatten(createArray(createArray(createObject('name', 'WEBSITES_PORT', 'value', '80'), createObject('name', 'WEBSITES_ENABLE_APP_SERVICE_STORAGE', 'value', 'false'), createObject('name', 'WEBSITE_CONTAINER_START_TIME_LIMIT', 'value', '600'), createObject('name', 'IMAGE_TAG', 'value', parameters('imageTag')), createObject('name', 'API_UPSTREAM', 'value', 'localhost:8081'), createObject('name', 'NLP_UPSTREAM', 'value', 'localhost:5000')), if(parameters('enableAppInsights'), createArray(createObject('name', 'APPLICATIONINSIGHTS_CONNECTION_STRING', 'value', coalesce(tryGet(if(parameters('enableAppInsights'), reference(resourceId('Microsoft.Insights/components', variables('insightsName')), '2020-02-02', 'full'), null()), 'properties', 'ConnectionString'), ''))), createArray())))]"
         }
       },
       "dependsOn": [
