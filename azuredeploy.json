@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.40.2.10011",
-      "templateHash": "8486988383225661755"
+      "version": "0.41.2.15936",
+      "templateHash": "6099489055022257657"
     }
   },
   "parameters": {
@@ -37,7 +37,7 @@
         "P3v3"
       ],
       "metadata": {
-        "description": "App Service Plan pricing tier. B1 is the smallest Linux tier that supports multi-container."
+        "description": "App Service Plan pricing tier. B1 is the smallest Linux tier that supports containers."
       }
     },
     "imageTag": {
@@ -87,8 +87,7 @@
     "planName": "[format('{0}-plan', parameters('appName'))]",
     "insightsName": "[format('{0}-insights', parameters('appName'))]",
     "workspaceName": "[format('{0}-logs', parameters('appName'))]",
-    "imageBase": "ghcr.io/dutchhamburgers/pseudoai-azure",
-    "dockerComposeContent": "[format('version: \"3.8\"\nservices:\n  web:\n    image: {0}/web:{1}\n    ports:\n      - \"80:80\"\n    depends_on:\n      - api\n      - nlp\n    restart: unless-stopped\n  api:\n    image: {2}/api-php:{3}\n    expose:\n      - \"8081\"\n    restart: unless-stopped\n  nlp:\n    image: {4}/nlp-python:{5}\n    expose:\n      - \"5000\"\n    restart: unless-stopped\n', variables('imageBase'), parameters('imageTag'), variables('imageBase'), parameters('imageTag'), variables('imageBase'), parameters('imageTag'))]"
+    "imageBase": "ghcr.io/dutchhamburgers/pseudoai-azure"
   },
   "resources": [
     {
@@ -136,7 +135,7 @@
     },
     {
       "type": "Microsoft.Web/sites",
-      "apiVersion": "2023-01-01",
+      "apiVersion": "2024-04-01",
       "name": "[parameters('appName')]",
       "location": "[parameters('location')]",
       "kind": "app,linux,container",
@@ -144,13 +143,129 @@
         "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('planName'))]",
         "httpsOnly": true,
         "siteConfig": {
-          "linuxFxVersion": "[format('COMPOSE|{0}', base64(variables('dockerComposeContent')))]",
-          "appSettings": "[flatten(createArray(createArray(createObject('name', 'WEBSITES_PORT', 'value', '80'), createObject('name', 'WEBSITES_ENABLE_APP_SERVICE_STORAGE', 'value', 'false'), createObject('name', 'APP_MODE', 'value', 'single'), createObject('name', 'IMAGE_TAG', 'value', parameters('imageTag')), createObject('name', 'SUMUP_API_KEY', 'value', parameters('sumupApiKey')), createObject('name', 'SUMUP_MERCHANT_CODE', 'value', parameters('sumupMerchantCode')), createObject('name', 'SUMUP_API_BASE_URL', 'value', 'https://api.sumup.com/v0.1'), createObject('name', 'FRONTEND_BASE_URL', 'value', format('https://{0}.azurewebsites.net', parameters('appName'))), createObject('name', 'CORS_ALLOWED_ORIGINS', 'value', format('https://{0}.azurewebsites.net', parameters('appName'))), createObject('name', 'NLP_PYTHON_ENABLED', 'value', 'true'), createObject('name', 'NLP_PYTHON_URL', 'value', 'http://nlp:5000'), createObject('name', 'NLP_PYTHON_DEADLINE_SECONDS', 'value', '35'), createObject('name', 'NLP_PYTHON_NER_ENABLED', 'value', 'false'), createObject('name', 'NLP_PII_HINTS_ENABLED', 'value', 'false'), createObject('name', 'MASK_SINGLE_NAMES_DEFAULT', 'value', 'false'), createObject('name', 'AUTO_CREATE_INITIAL_USER', 'value', 'true'), createObject('name', 'INITIAL_USER_USERNAME', 'value', 'user'), createObject('name', 'INITIAL_USER_PASSWORD', 'value', parameters('initialUserPassword')), createObject('name', 'INITIAL_USER_EMAIL', 'value', ''), createObject('name', 'OPENAI_API_KEY', 'value', parameters('openaiApiKey')), createObject('name', 'AI_MODEL_DEFAULT', 'value', 'gpt-4o-mini'), createObject('name', 'AI_MAX_OUTPUT_TOKENS_CAP', 'value', '2048'), createObject('name', 'AI_MAX_INPUT_CHARS_CAP', 'value', '40000')), if(parameters('enableAppInsights'), createArray(createObject('name', 'APPLICATIONINSIGHTS_CONNECTION_STRING', 'value', coalesce(tryGet(if(parameters('enableAppInsights'), reference(resourceId('Microsoft.Insights/components', variables('insightsName')), '2020-02-02', 'full'), null()), 'properties', 'ConnectionString'), ''))), createArray())))]"
+          "linuxFxVersion": "[format('DOCKER|{0}/web:{1}', variables('imageBase'), parameters('imageTag'))]",
+          "appSettings": "[flatten(createArray(createArray(createObject('name', 'WEBSITES_PORT', 'value', '80'), createObject('name', 'WEBSITES_ENABLE_APP_SERVICE_STORAGE', 'value', 'false'), createObject('name', 'IMAGE_TAG', 'value', parameters('imageTag')), createObject('name', 'API_UPSTREAM', 'value', 'localhost:8081'), createObject('name', 'NLP_UPSTREAM', 'value', 'localhost:5000')), if(parameters('enableAppInsights'), createArray(createObject('name', 'APPLICATIONINSIGHTS_CONNECTION_STRING', 'value', coalesce(tryGet(if(parameters('enableAppInsights'), reference(resourceId('Microsoft.Insights/components', variables('insightsName')), '2020-02-02', 'full'), null()), 'properties', 'ConnectionString'), ''))), createArray())))]"
         }
       },
       "dependsOn": [
         "[resourceId('Microsoft.Insights/components', variables('insightsName'))]",
         "[resourceId('Microsoft.Web/serverfarms', variables('planName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Web/sites/sitecontainers",
+      "apiVersion": "2024-04-01",
+      "name": "[format('{0}/{1}', parameters('appName'), 'api-php')]",
+      "properties": {
+        "image": "[format('{0}/api-php:{1}', variables('imageBase'), parameters('imageTag'))]",
+        "isMain": false,
+        "targetPort": "8081",
+        "authType": "Anonymous",
+        "environmentVariables": [
+          {
+            "name": "APP_MODE",
+            "value": "single"
+          },
+          {
+            "name": "SUMUP_API_KEY",
+            "value": "[parameters('sumupApiKey')]"
+          },
+          {
+            "name": "SUMUP_MERCHANT_CODE",
+            "value": "[parameters('sumupMerchantCode')]"
+          },
+          {
+            "name": "SUMUP_API_BASE_URL",
+            "value": "https://api.sumup.com/v0.1"
+          },
+          {
+            "name": "FRONTEND_BASE_URL",
+            "value": "[format('https://{0}.azurewebsites.net', parameters('appName'))]"
+          },
+          {
+            "name": "CORS_ALLOWED_ORIGINS",
+            "value": "[format('https://{0}.azurewebsites.net', parameters('appName'))]"
+          },
+          {
+            "name": "NLP_PYTHON_ENABLED",
+            "value": "true"
+          },
+          {
+            "name": "NLP_PYTHON_URL",
+            "value": "http://localhost:5000"
+          },
+          {
+            "name": "NLP_PYTHON_DEADLINE_SECONDS",
+            "value": "35"
+          },
+          {
+            "name": "NLP_PYTHON_NER_ENABLED",
+            "value": "false"
+          },
+          {
+            "name": "NLP_PII_HINTS_ENABLED",
+            "value": "false"
+          },
+          {
+            "name": "MASK_SINGLE_NAMES_DEFAULT",
+            "value": "false"
+          },
+          {
+            "name": "AUTO_CREATE_INITIAL_USER",
+            "value": "true"
+          },
+          {
+            "name": "INITIAL_USER_USERNAME",
+            "value": "user"
+          },
+          {
+            "name": "INITIAL_USER_PASSWORD",
+            "value": "[parameters('initialUserPassword')]"
+          },
+          {
+            "name": "INITIAL_USER_EMAIL",
+            "value": ""
+          },
+          {
+            "name": "OPENAI_API_KEY",
+            "value": "[parameters('openaiApiKey')]"
+          },
+          {
+            "name": "AI_MODEL_DEFAULT",
+            "value": "gpt-4o-mini"
+          },
+          {
+            "name": "AI_MAX_OUTPUT_TOKENS_CAP",
+            "value": "2048"
+          },
+          {
+            "name": "AI_MAX_INPUT_CHARS_CAP",
+            "value": "40000"
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', parameters('appName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Web/sites/sitecontainers",
+      "apiVersion": "2024-04-01",
+      "name": "[format('{0}/{1}', parameters('appName'), 'nlp-python')]",
+      "properties": {
+        "image": "[format('{0}/nlp-python:{1}', variables('imageBase'), parameters('imageTag'))]",
+        "isMain": false,
+        "targetPort": "5000",
+        "authType": "Anonymous",
+        "environmentVariables": [
+          {
+            "name": "FLASK_DEBUG",
+            "value": "false"
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', parameters('appName'))]"
       ]
     }
   ],
@@ -160,7 +275,7 @@
       "metadata": {
         "description": "The public URL of the deployed PseudoAI application."
       },
-      "value": "[format('https://{0}', reference(resourceId('Microsoft.Web/sites', parameters('appName')), '2023-01-01').defaultHostName)]"
+      "value": "[format('https://{0}', reference(resourceId('Microsoft.Web/sites', parameters('appName')), '2024-04-01').defaultHostName)]"
     },
     "webAppId": {
       "type": "string",
