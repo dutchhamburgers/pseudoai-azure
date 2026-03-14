@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.41.2.15936",
-      "templateHash": "10058217869091246799"
+      "templateHash": "7550450795980858320"
     }
   },
   "parameters": {
@@ -81,13 +81,28 @@
       "metadata": {
         "description": "OpenAI API key for AI integration (optional). Leave empty to disable."
       }
+    },
+    "ghcrUsername": {
+      "type": "string",
+      "defaultValue": "dutchhamburgers",
+      "metadata": {
+        "description": "GitHub username or organisation that owns the GHCR packages (e.g. dutchhamburgers). Only needed when the container images are not public."
+      }
+    },
+    "ghcrToken": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "GitHub Personal Access Token with read:packages scope. Required when GHCR images are private. Leave empty if packages are public."
+      }
     }
   },
   "variables": {
     "planName": "[format('{0}-plan', parameters('appName'))]",
     "insightsName": "[format('{0}-insights', parameters('appName'))]",
     "workspaceName": "[format('{0}-logs', parameters('appName'))]",
-    "imageBase": "ghcr.io/dutchhamburgers/pseudoai-azure"
+    "imageBase": "ghcr.io/dutchhamburgers/pseudoai-azure",
+    "useGhcrCredentials": "[not(empty(parameters('ghcrToken')))]"
   },
   "resources": [
     {
@@ -144,7 +159,7 @@
         "httpsOnly": true,
         "siteConfig": {
           "linuxFxVersion": "[format('DOCKER|{0}/web:{1}', variables('imageBase'), parameters('imageTag'))]",
-          "appSettings": "[flatten(createArray(createArray(createObject('name', 'WEBSITES_PORT', 'value', '80'), createObject('name', 'WEBSITES_ENABLE_APP_SERVICE_STORAGE', 'value', 'false'), createObject('name', 'WEBSITE_CONTAINER_START_TIME_LIMIT', 'value', '600'), createObject('name', 'IMAGE_TAG', 'value', parameters('imageTag')), createObject('name', 'API_UPSTREAM', 'value', 'localhost:8081'), createObject('name', 'NLP_UPSTREAM', 'value', 'localhost:5000')), if(parameters('enableAppInsights'), createArray(createObject('name', 'APPLICATIONINSIGHTS_CONNECTION_STRING', 'value', coalesce(tryGet(if(parameters('enableAppInsights'), reference(resourceId('Microsoft.Insights/components', variables('insightsName')), '2020-02-02', 'full'), null()), 'properties', 'ConnectionString'), ''))), createArray())))]"
+          "appSettings": "[flatten(createArray(createArray(createObject('name', 'WEBSITES_PORT', 'value', '80'), createObject('name', 'WEBSITES_ENABLE_APP_SERVICE_STORAGE', 'value', 'false'), createObject('name', 'WEBSITE_CONTAINER_START_TIME_LIMIT', 'value', '600'), createObject('name', 'IMAGE_TAG', 'value', parameters('imageTag')), createObject('name', 'API_UPSTREAM', 'value', 'localhost:8081'), createObject('name', 'NLP_UPSTREAM', 'value', 'localhost:5000')), if(parameters('enableAppInsights'), createArray(createObject('name', 'APPLICATIONINSIGHTS_CONNECTION_STRING', 'value', coalesce(tryGet(if(parameters('enableAppInsights'), reference(resourceId('Microsoft.Insights/components', variables('insightsName')), '2020-02-02', 'full'), null()), 'properties', 'ConnectionString'), ''))), createArray()), if(variables('useGhcrCredentials'), createArray(createObject('name', 'DOCKER_REGISTRY_SERVER_URL', 'value', 'https://ghcr.io'), createObject('name', 'DOCKER_REGISTRY_SERVER_USERNAME', 'value', parameters('ghcrUsername')), createObject('name', 'DOCKER_REGISTRY_SERVER_PASSWORD', 'value', parameters('ghcrToken'))), createArray())))]"
         }
       },
       "dependsOn": [
@@ -160,7 +175,9 @@
         "image": "[format('{0}/api-php:{1}', variables('imageBase'), parameters('imageTag'))]",
         "isMain": false,
         "targetPort": "8081",
-        "authType": "Anonymous",
+        "authType": "[if(variables('useGhcrCredentials'), 'UserCredentials', 'Anonymous')]",
+        "userName": "[if(variables('useGhcrCredentials'), parameters('ghcrUsername'), null())]",
+        "passwordSecret": "[if(variables('useGhcrCredentials'), parameters('ghcrToken'), null())]",
         "environmentVariables": [
           {
             "name": "APP_MODE",
@@ -256,7 +273,9 @@
         "image": "[format('{0}/nlp-python:{1}', variables('imageBase'), parameters('imageTag'))]",
         "isMain": false,
         "targetPort": "5000",
-        "authType": "Anonymous",
+        "authType": "[if(variables('useGhcrCredentials'), 'UserCredentials', 'Anonymous')]",
+        "userName": "[if(variables('useGhcrCredentials'), parameters('ghcrUsername'), null())]",
+        "passwordSecret": "[if(variables('useGhcrCredentials'), parameters('ghcrToken'), null())]",
         "environmentVariables": [
           {
             "name": "FLASK_DEBUG",
