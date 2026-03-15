@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.41.2.15936",
-      "templateHash": "8260714177955326162"
+      "templateHash": "5125973437215783882"
     }
   },
   "parameters": {
@@ -75,6 +75,13 @@
         "description": "GitHub username or organisation that owns the GHCR packages (e.g. dutchhamburgers). Only needed when the container images are not public."
       }
     },
+    "useGhcrAuth": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "When true, App Service pulls GHCR images with username/token credentials. Keep false for public GHCR packages."
+      }
+    },
     "ghcrToken": {
       "type": "securestring",
       "defaultValue": "",
@@ -88,7 +95,7 @@
     "insightsName": "[format('{0}-insights', parameters('appName'))]",
     "workspaceName": "[format('{0}-logs', parameters('appName'))]",
     "imageBase": "ghcr.io/dutchhamburgers/pseudoai-azure",
-    "useGhcrCredentials": "[not(empty(parameters('ghcrToken')))]"
+    "useGhcrCredentials": "[and(parameters('useGhcrAuth'), not(empty(parameters('ghcrToken'))))]"
   },
   "resources": [
     {
