@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.41.2.15936",
-      "templateHash": "12073345132748000365"
+      "templateHash": "15837550416883668073"
     }
   },
   "parameters": {
@@ -52,20 +52,6 @@
       "defaultValue": true,
       "metadata": {
         "description": "Deploy Application Insights and Log Analytics workspace for monitoring."
-      }
-    },
-    "sumupApiKey": {
-      "type": "securestring",
-      "defaultValue": "",
-      "metadata": {
-        "description": "SumUp secret API key (server-side only). Leave empty to configure later."
-      }
-    },
-    "sumupMerchantCode": {
-      "type": "string",
-      "defaultValue": "",
-      "metadata": {
-        "description": "SumUp merchant code. Leave empty to configure later."
       }
     },
     "initialUserPassword": {
@@ -209,18 +195,6 @@
           {
             "name": "APP_MODE",
             "value": "single"
-          },
-          {
-            "name": "SUMUP_API_KEY",
-            "value": "[parameters('sumupApiKey')]"
-          },
-          {
-            "name": "SUMUP_MERCHANT_CODE",
-            "value": "[parameters('sumupMerchantCode')]"
-          },
-          {
-            "name": "SUMUP_API_BASE_URL",
-            "value": "https://api.sumup.com/v0.1"
           },
           {
             "name": "FRONTEND_BASE_URL",
