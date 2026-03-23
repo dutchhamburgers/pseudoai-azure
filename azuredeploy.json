@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.41.2.15936",
-      "templateHash": "12416491316490116188"
+      "templateHash": "2036889863563555927"
     }
   },
   "parameters": {
@@ -269,6 +269,10 @@
           {
             "name": "FLASK_DEBUG",
             "value": "false"
+          },
+          {
+            "name": "BAG_DATA_DIR",
+            "value": "/data"
           }
         ]
       },
