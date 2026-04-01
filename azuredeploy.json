@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.41.2.15936",
-      "templateHash": "10225302532106150532"
+      "templateHash": "14591385382251336936"
     }
   },
   "parameters": {
@@ -89,6 +89,13 @@
         "description": "When true, seed admins.json/users.json from admins_initial.json/users_initial.json when those runtime files are missing."
       }
     },
+    "jwtSecret": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Stable HMAC-SHA256 signing secret for JWT tokens. Strongly recommended for production. Without it, PHP-FPM workers may each generate a different key on first startup, causing token validation failures across workers. Generate with: openssl rand -base64 32"
+      }
+    },
     "openaiApiKey": {
       "type": "securestring",
       "defaultValue": "",
@@ -116,6 +123,28 @@
       "minValue": 60,
       "metadata": {
         "description": "Debug unlock TTL in seconds (minimum 60)."
+      }
+    },
+    "loginRateLimitMax": {
+      "type": "int",
+      "defaultValue": 200,
+      "metadata": {
+        "description": "Maximum number of login attempts allowed per rate-limit window. Set 0 to disable login rate limiting."
+      }
+    },
+    "loginRateLimitWindowSeconds": {
+      "type": "int",
+      "defaultValue": 60,
+      "minValue": 1,
+      "metadata": {
+        "description": "Length of the login rate-limit window in seconds."
+      }
+    },
+    "debugAuthConfig": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "When true, log the effective login rate-limit config to the PHP error log for debugging."
       }
     },
     "ghcrUsername": {
@@ -203,7 +232,7 @@
         "siteConfig": {
           "linuxFxVersion": "",
           "healthCheckPath": "/api/health",
-          "appSettings": "[flatten(createArray(createArray(createObject('name', 'WEBSITES_PORT', 'value', '80'), createObject('name', 'WEBSITES_ENABLE_APP_SERVICE_STORAGE', 'value', 'true'), createObject('name', 'WEBSITES_CONTAINER_START_TIME_LIMIT', 'value', '600'), createObject('name', 'DOCKER_ENABLE_CI', 'value', 'true'), createObject('name', 'IMAGE_TAG', 'value', parameters('imageTag')), createObject('name', 'DOCKER_REGISTRY_SERVER_URL', 'value', 'https://ghcr.io'), createObject('name', 'API_UPSTREAM', 'value', 'localhost:8081'), createObject('name', 'NLP_UPSTREAM', 'value', 'localhost:5000'), createObject('name', 'PSEUDOAI_DATA_DIR', 'value', '/home/site/pseudoai-data')), if(variables('useGhcrCredentials'), createArray(createObject('name', 'DOCKER_REGISTRY_SERVER_USERNAME', 'value', parameters('ghcrUsername')), createObject('name', 'DOCKER_REGISTRY_SERVER_PASSWORD', 'value', parameters('ghcrToken'))), createArray()), if(parameters('enableAppInsights'), createArray(createObject('name', 'APPLICATIONINSIGHTS_CONNECTION_STRING', 'value', coalesce(tryGet(if(parameters('enableAppInsights'), reference(resourceId('Microsoft.Insights/components', variables('insightsName')), '2020-02-02', 'full'), null()), 'properties', 'ConnectionString'), ''))), createArray())))]"
+          "appSettings": "[flatten(createArray(createArray(createObject('name', 'WEBSITES_PORT', 'value', '80'), createObject('name', 'WEBSITES_ENABLE_APP_SERVICE_STORAGE', 'value', 'true'), createObject('name', 'WEBSITES_CONTAINER_START_TIME_LIMIT', 'value', '600'), createObject('name', 'DOCKER_ENABLE_CI', 'value', 'true'), createObject('name', 'IMAGE_TAG', 'value', parameters('imageTag')), createObject('name', 'DOCKER_REGISTRY_SERVER_URL', 'value', 'https://ghcr.io'), createObject('name', 'API_UPSTREAM', 'value', 'localhost:8081'), createObject('name', 'NLP_UPSTREAM', 'value', 'localhost:5000'), createObject('name', 'PSEUDOAI_DATA_DIR', 'value', '/home/site/pseudoai-data'), createObject('name', 'LOGIN_RATE_LIMIT_MAX', 'value', string(parameters('loginRateLimitMax'))), createObject('name', 'LOGIN_RATE_LIMIT_WINDOW_SECONDS', 'value', string(parameters('loginRateLimitWindowSeconds'))), createObject('name', 'DEBUG_AUTH_CONFIG', 'value', if(parameters('debugAuthConfig'), 'true', 'false')), createObject('name', 'ADMIN_RESET_PASSWORD', 'value', if(parameters('adminResetPassword'), 'true', 'false')), createObject('name', 'USER_RESET_PASSWORD', 'value', if(parameters('userResetPassword'), 'true', 'false')), createObject('name', 'INITIALISE_USERS_AND_ADMINS', 'value', if(parameters('initialiseUsersAndAdmins'), 'true', 'false'))), if(empty(parameters('jwtSecret')), createArray(), createArray(createObject('name', 'JWT_SECRET', 'value', parameters('jwtSecret')))), if(variables('useGhcrCredentials'), createArray(createObject('name', 'DOCKER_REGISTRY_SERVER_USERNAME', 'value', parameters('ghcrUsername')), createObject('name', 'DOCKER_REGISTRY_SERVER_PASSWORD', 'value', parameters('ghcrToken'))), createArray()), if(parameters('enableAppInsights'), createArray(createObject('name', 'APPLICATIONINSIGHTS_CONNECTION_STRING', 'value', coalesce(tryGet(if(parameters('enableAppInsights'), reference(resourceId('Microsoft.Insights/components', variables('insightsName')), '2020-02-02', 'full'), null()), 'properties', 'ConnectionString'), ''))), createArray())))]"
         }
       },
       "dependsOn": [
@@ -248,7 +277,7 @@
         "authType": "[if(variables('useGhcrCredentials'), 'UserCredentials', 'Anonymous')]",
         "userName": "[if(variables('useGhcrCredentials'), parameters('ghcrUsername'), null())]",
         "passwordSecret": "[if(variables('useGhcrCredentials'), parameters('ghcrToken'), null())]",
-        "environmentVariables": "[flatten(createArray(createArray(createObject('name', 'FRONTEND_BASE_URL', 'value', 'https://test-js-pseudoai.dutchhamburgers.nl'), createObject('name', 'CORS_ALLOWED_ORIGINS', 'value', format('https://{0}.azurewebsites.net', parameters('appName'))), createObject('name', 'PSEUDOAI_DATA_DIR', 'value', '/home/site/pseudoai-data'), createObject('name', 'NLP_PYTHON_ENABLED', 'value', 'true'), createObject('name', 'NLP_PYTHON_URL', 'value', 'http://localhost:5000'), createObject('name', 'NLP_PYTHON_BIN', 'value', 'python3'), createObject('name', 'NLP_PYTHON_DEADLINE_SECONDS', 'value', '35'), createObject('name', 'NLP_PII_HINTS_ENABLED', 'value', 'true'), createObject('name', 'NLP_PII_ML_ENABLED', 'value', 'true'), createObject('name', 'NLP_PII_ML_PROVIDER', 'value', 'flair'), createObject('name', 'NLP_PII_ML_FLAIR_MODEL', 'value', 'flair/ner-english-large'), createObject('name', 'NLP_PII_ML_ALLOW_FALLBACK', 'value', 'false'), createObject('name', 'NLP_SERVICE_URL', 'value', 'disabled'), createObject('name', 'MASK_SINGLE_NAMES_DEFAULT', 'value', 'true'), createObject('name', 'USER_PASSWORD_RESET_TTL_SECONDS', 'value', '3600'), createObject('name', 'USER_PASSWORD_RESET_URL_TEMPLATE', 'value', ''), createObject('name', 'VAULT_ENCRYPTION_PASSPHRASE', 'value', 'confess-passage-throbbing-tactile-recluse-booted'), createObject('name', 'SMTP_HOST', 'value', 'smtp.hostnet.nl'), createObject('name', 'SMTP_PORT', 'value', '587'), createObject('name', 'SMTP_SECURE', 'value', 'starttls'), createObject('name', 'SMTP_AUTH_MODE', 'value', 'plain'), createObject('name', 'SMTP_USER', 'value', 'info@dutchhamburgers.nl'), createObject('name', 'SMTP_FROM', 'value', 'info@dutchhamburgers.nl'), createObject('name', 'SMTP_PASS', 'value', ''), createObject('name', 'LICENSE_SERVER_SUBDOMAIN', 'value', 'bun'), createObject('name', 'LICENSE_SERVER_DOMAIN', 'value', 'dutchhamburgers.nl'), createObject('name', 'LICENSE_SERVER_URL', 'value', ''), createObject('name', 'AUTO_CREATE_INITIAL_USER', 'value', 'true'), createObject('name', 'INITIALISE_USERS_AND_ADMINS', 'value', if(parameters('initialiseUsersAndAdmins'), 'true', 'false')), createObject('name', 'INITIAL_USER_USERNAME', 'value', 'user')), if(empty(parameters('initialUserPassword')), createArray(), createArray(createObject('name', 'INITIAL_USER_PASSWORD', 'value', parameters('initialUserPassword')))), createArray(createObject('name', 'INITIAL_USER_EMAIL', 'value', ''), createObject('name', 'USER_RESET_PASSWORD', 'value', if(parameters('userResetPassword'), 'true', 'false')), createObject('name', 'INITIAL_ADMIN_USERNAME', 'value', 'admin'), createObject('name', 'INITIAL_ADMIN_PASSWORD', 'value', if(empty(parameters('initialAdminPassword')), 'welkom123', parameters('initialAdminPassword'))), createObject('name', 'ADMIN_RESET_PASSWORD', 'value', if(parameters('adminResetPassword'), 'true', 'false')), createObject('name', 'ENABLE_SECRET_DEBUG_ENTRY', 'value', if(parameters('enableSecretDebugEntry'), 'true', 'false')), createObject('name', 'DEBUG_PIN_CODE', 'value', if(empty(parameters('debugPinCode')), '6789', parameters('debugPinCode'))), createObject('name', 'DEBUG_SESSION_TTL_SECONDS', 'value', string(parameters('debugSessionTtlSeconds'))), createObject('name', 'AZURE_OPENAI_API_KEY', 'value', ''), createObject('name', 'AZURE_OPENAI_DEPLOYMENT', 'value', 'gpt-4o-mini'), createObject('name', 'AZURE_OPENAI_ENDPOINT', 'value', ''), createObject('name', 'GEMINI_API_KEY', 'value', ''), createObject('name', 'OPENAI_API_KEY', 'value', parameters('openaiApiKey')), createObject('name', 'AI_MODEL_DEFAULT', 'value', 'gpt-4o-mini'), createObject('name', 'AI_MAX_OUTPUT_TOKENS_CAP', 'value', '2048'), createObject('name', 'AI_MAX_INPUT_CHARS_CAP', 'value', '2048'), createObject('name', 'AUDIT_LOG_DIRECTORY', 'value', ''), createObject('name', 'AUDIT_LOG_RETENTION_DAYS', 'value', '90'))))]"
+        "environmentVariables": "[flatten(createArray(createArray(createObject('name', 'FRONTEND_BASE_URL', 'value', 'https://test-js-pseudoai.dutchhamburgers.nl'), createObject('name', 'CORS_ALLOWED_ORIGINS', 'value', format('https://{0}.azurewebsites.net', parameters('appName'))), createObject('name', 'PSEUDOAI_DATA_DIR', 'value', '/home/site/pseudoai-data'), createObject('name', 'NLP_PYTHON_ENABLED', 'value', 'true'), createObject('name', 'NLP_PYTHON_URL', 'value', 'http://localhost:5000'), createObject('name', 'NLP_PYTHON_BIN', 'value', 'python3'), createObject('name', 'NLP_PYTHON_DEADLINE_SECONDS', 'value', '35'), createObject('name', 'NLP_PII_HINTS_ENABLED', 'value', 'true'), createObject('name', 'NLP_PII_ML_ENABLED', 'value', 'true'), createObject('name', 'NLP_PII_ML_PROVIDER', 'value', 'flair'), createObject('name', 'NLP_PII_ML_FLAIR_MODEL', 'value', 'flair/ner-english-large'), createObject('name', 'NLP_PII_ML_ALLOW_FALLBACK', 'value', 'false'), createObject('name', 'NLP_SERVICE_URL', 'value', 'disabled'), createObject('name', 'MASK_SINGLE_NAMES_DEFAULT', 'value', 'true'), createObject('name', 'USER_PASSWORD_RESET_TTL_SECONDS', 'value', '3600'), createObject('name', 'USER_PASSWORD_RESET_URL_TEMPLATE', 'value', ''), createObject('name', 'VAULT_ENCRYPTION_PASSPHRASE', 'value', 'confess-passage-throbbing-tactile-recluse-booted'), createObject('name', 'SMTP_HOST', 'value', 'smtp.hostnet.nl'), createObject('name', 'SMTP_PORT', 'value', '587'), createObject('name', 'SMTP_SECURE', 'value', 'starttls'), createObject('name', 'SMTP_AUTH_MODE', 'value', 'plain'), createObject('name', 'SMTP_USER', 'value', 'info@dutchhamburgers.nl'), createObject('name', 'SMTP_FROM', 'value', 'info@dutchhamburgers.nl'), createObject('name', 'SMTP_PASS', 'value', ''), createObject('name', 'LICENSE_SERVER_SUBDOMAIN', 'value', 'bun'), createObject('name', 'LICENSE_SERVER_DOMAIN', 'value', 'dutchhamburgers.nl'), createObject('name', 'LICENSE_SERVER_URL', 'value', ''), createObject('name', 'AUTO_CREATE_INITIAL_USER', 'value', 'true'), createObject('name', 'INITIALISE_USERS_AND_ADMINS', 'value', if(parameters('initialiseUsersAndAdmins'), 'true', 'false')), createObject('name', 'INITIAL_USER_USERNAME', 'value', 'user')), if(empty(parameters('initialUserPassword')), createArray(), createArray(createObject('name', 'INITIAL_USER_PASSWORD', 'value', parameters('initialUserPassword')))), createArray(createObject('name', 'INITIAL_USER_EMAIL', 'value', ''), createObject('name', 'USER_RESET_PASSWORD', 'value', if(parameters('userResetPassword'), 'true', 'false')), createObject('name', 'INITIAL_ADMIN_USERNAME', 'value', 'admin'), createObject('name', 'INITIAL_ADMIN_PASSWORD', 'value', if(empty(parameters('initialAdminPassword')), 'welkom123', parameters('initialAdminPassword'))), createObject('name', 'ADMIN_RESET_PASSWORD', 'value', if(parameters('adminResetPassword'), 'true', 'false')), createObject('name', 'LOGIN_RATE_LIMIT_MAX', 'value', string(parameters('loginRateLimitMax'))), createObject('name', 'LOGIN_RATE_LIMIT_WINDOW_SECONDS', 'value', string(parameters('loginRateLimitWindowSeconds'))), createObject('name', 'DEBUG_AUTH_CONFIG', 'value', if(parameters('debugAuthConfig'), 'true', 'false')), createObject('name', 'ENABLE_SECRET_DEBUG_ENTRY', 'value', if(parameters('enableSecretDebugEntry'), 'true', 'false')), createObject('name', 'DEBUG_PIN_CODE', 'value', if(empty(parameters('debugPinCode')), '6789', parameters('debugPinCode'))), createObject('name', 'DEBUG_SESSION_TTL_SECONDS', 'value', string(parameters('debugSessionTtlSeconds'))), createObject('name', 'AZURE_OPENAI_API_KEY', 'value', ''), createObject('name', 'AZURE_OPENAI_DEPLOYMENT', 'value', 'gpt-4o-mini'), createObject('name', 'AZURE_OPENAI_ENDPOINT', 'value', ''), createObject('name', 'GEMINI_API_KEY', 'value', ''), createObject('name', 'OPENAI_API_KEY', 'value', parameters('openaiApiKey')), createObject('name', 'AI_MODEL_DEFAULT', 'value', 'gpt-4o-mini'), createObject('name', 'AI_MAX_OUTPUT_TOKENS_CAP', 'value', '2048'), createObject('name', 'AI_MAX_INPUT_CHARS_CAP', 'value', '2048'), createObject('name', 'AUDIT_LOG_DIRECTORY', 'value', ''), createObject('name', 'AUDIT_LOG_RETENTION_DAYS', 'value', '90')), if(empty(parameters('jwtSecret')), createArray(), createArray(createObject('name', 'JWT_SECRET', 'value', parameters('jwtSecret'))))))]"
       },
       "dependsOn": [
         "[resourceId('Microsoft.Web/sites', parameters('appName'))]"
