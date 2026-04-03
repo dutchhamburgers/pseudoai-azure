@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.41.2.15936",
-      "templateHash": "2815402781731256928"
+      "templateHash": "8338462348951702541"
     }
   },
   "parameters": {
@@ -18,7 +18,7 @@
     "afdEndpointName": {
       "type": "string",
       "metadata": {
-        "description": "Name of the existing AFD endpoint within the profile to attach the route to."
+        "description": "Resource name of the existing AFD endpoint to attach the route to (e.g. \"sales-pseudoai\").\nThis is the short name shown in the Azure Portal under your Front Door profile → Endpoints → \"Endpoint name\" column.\nDo NOT use the auto-generated hostname (e.g. \"sales-pseudoai-hgbjavg7cgg5hue7.z03.azurefd.net\") — that will cause a ParentResourceNotFound error."
       }
     },
     "appServiceHostname": {
@@ -109,6 +109,7 @@
   },
   "variables": {
     "supportedProtocols": "[if(equals(parameters('routeProtocols'), 'HttpsOnly'), createArray('Https'), if(equals(parameters('routeProtocols'), 'HttpOnly'), createArray('Http'), createArray('Http', 'Https')))]",
+    "afdEndpointResourceName": "[if(contains(parameters('afdEndpointName'), '.'), '', parameters('afdEndpointName'))]",
     "customDomainResourceName": "[if(parameters('addCustomDomain'), format('{0}-{1}', parameters('customSubdomain'), replace(parameters('customDomainZone'), '.', '-')), 'placeholder')]"
   },
   "resources": [
@@ -164,7 +165,7 @@
     {
       "type": "Microsoft.Cdn/profiles/afdEndpoints/routes",
       "apiVersion": "2024-02-01",
-      "name": "[format('{0}/{1}/{2}', parameters('frontDoorProfileName'), parameters('afdEndpointName'), parameters('routeName'))]",
+      "name": "[format('{0}/{1}/{2}', parameters('frontDoorProfileName'), variables('afdEndpointResourceName'), parameters('routeName'))]",
       "properties": {
         "originGroup": {
           "id": "[resourceId('Microsoft.Cdn/profiles/originGroups', parameters('frontDoorProfileName'), parameters('originGroupName'))]"
