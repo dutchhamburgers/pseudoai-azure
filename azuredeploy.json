@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.41.2.15936",
-      "templateHash": "12113007007721195920"
+      "templateHash": "14155061549106782567"
     }
   },
   "parameters": {
@@ -554,16 +554,6 @@
         "authType": "[if(variables('useGhcrCredentials'), 'UserCredentials', 'Anonymous')]",
         "userName": "[if(variables('useGhcrCredentials'), parameters('ghcrUsername'), null())]",
         "passwordSecret": "[if(variables('useGhcrCredentials'), parameters('ghcrToken'), null())]",
-        "volumeMounts": [
-          {
-            "mountPath": "[parameters('pseudoaiDataDir')]",
-            "storage": "pseudoai-data"
-          },
-          {
-            "mountPath": "[variables('logsMountPath')]",
-            "storage": "pseudoai-logs"
-          }
-        ],
         "environmentVariables": [
           {
             "name": "FRONTEND_BASE_URL",
