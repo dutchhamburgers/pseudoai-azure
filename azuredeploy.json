@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.41.2.15936",
-      "templateHash": "10876256736082860296"
+      "templateHash": "2316155570563846902"
     }
   },
   "parameters": {
@@ -212,7 +212,6 @@
     "useGhcrCredentials": "[and(parameters('useGhcrAuth'), not(empty(parameters('ghcrToken'))))]",
     "keyVaultName": "kv-pseudoai",
     "storageAccountName": "sapseudoai",
-    "managedIdentityName": "mi-pseudoai-app-services",
     "logsMountPath": "/home/site/mounts/logs",
     "kvSecretsUserRoleId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')]"
   },
@@ -238,14 +237,15 @@
       "type": "Microsoft.Authorization/roleAssignments",
       "apiVersion": "2022-04-01",
       "scope": "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]",
-      "name": "[guid(resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('managedIdentityName')), variables('kvSecretsUserRoleId'))]",
+      "name": "[guid(resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName')), resourceId('Microsoft.Web/sites', parameters('appName')), variables('kvSecretsUserRoleId'))]",
       "properties": {
         "roleDefinitionId": "[variables('kvSecretsUserRoleId')]",
-        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('managedIdentityName')), '2023-01-31').principalId]",
+        "principalId": "[reference(resourceId('Microsoft.Web/sites', parameters('appName')), '2024-04-01', 'full').identity.principalId]",
         "principalType": "ServicePrincipal"
       },
       "dependsOn": [
-        "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]"
+        "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]",
+        "[resourceId('Microsoft.Web/sites', parameters('appName'))]"
       ]
     },
     {
@@ -473,10 +473,7 @@
       "location": "[parameters('location')]",
       "kind": "app,linux,container",
       "identity": {
-        "type": "UserAssigned",
-        "userAssignedIdentities": {
-          "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('managedIdentityName')))]": {}
-        }
+        "type": "SystemAssigned"
       },
       "properties": {
         "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('planName'))]",
@@ -484,7 +481,7 @@
         "siteConfig": {
           "linuxFxVersion": "",
           "healthCheckPath": "/api/health",
-          "appSettings": "[flatten(createArray(createArray(createObject('name', 'WEBSITES_PORT', 'value', '80'), createObject('name', 'WEBSITES_ENABLE_APP_SERVICE_STORAGE', 'value', 'true'), createObject('name', 'WEBSITES_CONTAINER_START_TIME_LIMIT', 'value', '600'), createObject('name', 'DOCKER_ENABLE_CI', 'value', 'true'), createObject('name', 'IMAGE_TAG', 'value', parameters('imageTag')), createObject('name', 'DOCKER_REGISTRY_SERVER_URL', 'value', 'https://ghcr.io'), createObject('name', 'API_UPSTREAM', 'value', 'localhost:8081'), createObject('name', 'NLP_UPSTREAM', 'value', 'localhost:5000'), createObject('name', 'PSEUDOAI_DATA_DIR', 'value', parameters('pseudoaiDataDir')), createObject('name', 'AZURE_CLIENT_ID', 'value', reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('managedIdentityName')), '2023-01-31').clientId), createObject('name', 'LOGIN_RATE_LIMIT_MAX', 'value', string(parameters('loginRateLimitMax'))), createObject('name', 'LOGIN_RATE_LIMIT_WINDOW_SECONDS', 'value', string(parameters('loginRateLimitWindowSeconds'))), createObject('name', 'DEBUG_AUTH_CONFIG', 'value', if(parameters('debugAuthConfig'), 'true', 'false')), createObject('name', 'ADMIN_RESET_PASSWORD', 'value', if(parameters('adminResetPassword'), 'true', 'false')), createObject('name', 'USER_RESET_PASSWORD', 'value', if(parameters('userResetPassword'), 'true', 'false')), createObject('name', 'INITIALISE_USERS_AND_ADMINS', 'value', if(parameters('initialiseUsersAndAdmins'), 'true', 'false'))), if(empty(parameters('jwtSecret')), createArray(), createArray(createObject('name', 'JWT_SECRET', 'value', format('@Microsoft.KeyVault(VaultName={0};SecretName=jwt-secret)', variables('keyVaultName'))))), if(empty(parameters('vaultEncryptionPassphrase')), createArray(), createArray(createObject('name', 'VAULT_ENCRYPTION_PASSPHRASE', 'value', format('@Microsoft.KeyVault(VaultName={0};SecretName=vault-encryption-passphrase)', variables('keyVaultName'))))), if(empty(parameters('initialAdminPassword')), createArray(createObject('name', 'INITIAL_ADMIN_PASSWORD', 'value', 'welkom123')), createArray(createObject('name', 'INITIAL_ADMIN_PASSWORD', 'value', format('@Microsoft.KeyVault(VaultName={0};SecretName=initial-admin-password)', variables('keyVaultName'))))), if(empty(parameters('initialUserPassword')), createArray(), createArray(createObject('name', 'INITIAL_USER_PASSWORD', 'value', format('@Microsoft.KeyVault(VaultName={0};SecretName=initial-user-password)', variables('keyVaultName'))))), if(empty(parameters('openaiApiKey')), createArray(), createArray(createObject('name', 'OPENAI_API_KEY', 'value', format('@Microsoft.KeyVault(VaultName={0};SecretName=openai-api-key)', variables('keyVaultName'))))), if(empty(parameters('azureOpenaiApiKey')), createArray(), createArray(createObject('name', 'AZURE_OPENAI_API_KEY', 'value', format('@Microsoft.KeyVault(VaultName={0};SecretName=azure-openai-api-key)', variables('keyVaultName'))))), if(empty(parameters('geminiApiKey')), createArray(), createArray(createObject('name', 'GEMINI_API_KEY', 'value', format('@Microsoft.KeyVault(VaultName={0};SecretName=gemini-api-key)', variables('keyVaultName'))))), if(empty(parameters('smtpPassword')), createArray(), createArray(createObject('name', 'SMTP_PASS', 'value', format('@Microsoft.KeyVault(VaultName={0};SecretName=smtp-password)', variables('keyVaultName'))))), if(empty(parameters('debugPinCode')), createArray(), createArray(createObject('name', 'DEBUG_PIN_CODE', 'value', format('@Microsoft.KeyVault(VaultName={0};SecretName=debug-pin-code)', variables('keyVaultName'))))), if(variables('useGhcrCredentials'), createArray(createObject('name', 'DOCKER_REGISTRY_SERVER_USERNAME', 'value', parameters('ghcrUsername')), createObject('name', 'DOCKER_REGISTRY_SERVER_PASSWORD', 'value', parameters('ghcrToken'))), createArray()), if(parameters('enableAppInsights'), createArray(createObject('name', 'APPLICATIONINSIGHTS_CONNECTION_STRING', 'value', coalesce(tryGet(if(parameters('enableAppInsights'), reference(resourceId('Microsoft.Insights/components', variables('insightsName')), '2020-02-02', 'full'), null()), 'properties', 'ConnectionString'), ''))), createArray())))]"
+          "appSettings": "[flatten(createArray(createArray(createObject('name', 'WEBSITES_PORT', 'value', '80'), createObject('name', 'WEBSITES_ENABLE_APP_SERVICE_STORAGE', 'value', 'true'), createObject('name', 'WEBSITES_CONTAINER_START_TIME_LIMIT', 'value', '600'), createObject('name', 'DOCKER_ENABLE_CI', 'value', 'true'), createObject('name', 'IMAGE_TAG', 'value', parameters('imageTag')), createObject('name', 'DOCKER_REGISTRY_SERVER_URL', 'value', 'https://ghcr.io'), createObject('name', 'API_UPSTREAM', 'value', 'localhost:8081'), createObject('name', 'NLP_UPSTREAM', 'value', 'localhost:5000'), createObject('name', 'PSEUDOAI_DATA_DIR', 'value', parameters('pseudoaiDataDir')), createObject('name', 'LOGIN_RATE_LIMIT_MAX', 'value', string(parameters('loginRateLimitMax'))), createObject('name', 'LOGIN_RATE_LIMIT_WINDOW_SECONDS', 'value', string(parameters('loginRateLimitWindowSeconds'))), createObject('name', 'DEBUG_AUTH_CONFIG', 'value', if(parameters('debugAuthConfig'), 'true', 'false')), createObject('name', 'ADMIN_RESET_PASSWORD', 'value', if(parameters('adminResetPassword'), 'true', 'false')), createObject('name', 'USER_RESET_PASSWORD', 'value', if(parameters('userResetPassword'), 'true', 'false')), createObject('name', 'INITIALISE_USERS_AND_ADMINS', 'value', if(parameters('initialiseUsersAndAdmins'), 'true', 'false'))), if(empty(parameters('jwtSecret')), createArray(), createArray(createObject('name', 'JWT_SECRET', 'value', format('@Microsoft.KeyVault(VaultName={0};SecretName=jwt-secret)', variables('keyVaultName'))))), if(empty(parameters('vaultEncryptionPassphrase')), createArray(), createArray(createObject('name', 'VAULT_ENCRYPTION_PASSPHRASE', 'value', format('@Microsoft.KeyVault(VaultName={0};SecretName=vault-encryption-passphrase)', variables('keyVaultName'))))), if(empty(parameters('initialAdminPassword')), createArray(createObject('name', 'INITIAL_ADMIN_PASSWORD', 'value', 'welkom123')), createArray(createObject('name', 'INITIAL_ADMIN_PASSWORD', 'value', format('@Microsoft.KeyVault(VaultName={0};SecretName=initial-admin-password)', variables('keyVaultName'))))), if(empty(parameters('initialUserPassword')), createArray(), createArray(createObject('name', 'INITIAL_USER_PASSWORD', 'value', format('@Microsoft.KeyVault(VaultName={0};SecretName=initial-user-password)', variables('keyVaultName'))))), if(empty(parameters('openaiApiKey')), createArray(), createArray(createObject('name', 'OPENAI_API_KEY', 'value', format('@Microsoft.KeyVault(VaultName={0};SecretName=openai-api-key)', variables('keyVaultName'))))), if(empty(parameters('azureOpenaiApiKey')), createArray(), createArray(createObject('name', 'AZURE_OPENAI_API_KEY', 'value', format('@Microsoft.KeyVault(VaultName={0};SecretName=azure-openai-api-key)', variables('keyVaultName'))))), if(empty(parameters('geminiApiKey')), createArray(), createArray(createObject('name', 'GEMINI_API_KEY', 'value', format('@Microsoft.KeyVault(VaultName={0};SecretName=gemini-api-key)', variables('keyVaultName'))))), if(empty(parameters('smtpPassword')), createArray(), createArray(createObject('name', 'SMTP_PASS', 'value', format('@Microsoft.KeyVault(VaultName={0};SecretName=smtp-password)', variables('keyVaultName'))))), if(empty(parameters('debugPinCode')), createArray(), createArray(createObject('name', 'DEBUG_PIN_CODE', 'value', format('@Microsoft.KeyVault(VaultName={0};SecretName=debug-pin-code)', variables('keyVaultName'))))), if(variables('useGhcrCredentials'), createArray(createObject('name', 'DOCKER_REGISTRY_SERVER_USERNAME', 'value', parameters('ghcrUsername')), createObject('name', 'DOCKER_REGISTRY_SERVER_PASSWORD', 'value', parameters('ghcrToken'))), createArray()), if(parameters('enableAppInsights'), createArray(createObject('name', 'APPLICATIONINSIGHTS_CONNECTION_STRING', 'value', coalesce(tryGet(if(parameters('enableAppInsights'), reference(resourceId('Microsoft.Insights/components', variables('insightsName')), '2020-02-02', 'full'), null()), 'properties', 'ConnectionString'), ''))), createArray())))]"
         }
       },
       "dependsOn": [
@@ -827,12 +824,12 @@
       },
       "value": "[variables('storageAccountName')]"
     },
-    "managedIdentityClientId": {
+    "systemIdentityPrincipalId": {
       "type": "string",
       "metadata": {
-        "description": "Client ID of the managed identity assigned to the App Service."
+        "description": "Principal ID of the system-assigned managed identity of the App Service."
       },
-      "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('managedIdentityName')), '2023-01-31').clientId]"
+      "value": "[reference(resourceId('Microsoft.Web/sites', parameters('appName')), '2024-04-01', 'full').identity.principalId]"
     }
   }
 }
