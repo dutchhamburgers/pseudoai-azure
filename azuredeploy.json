@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.41.2.15936",
-      "templateHash": "4593840888285097498"
+      "templateHash": "5866280671847987921"
     }
   },
   "parameters": {
@@ -90,7 +90,8 @@
     "keyVaultName": "kv-pseudoai",
     "storageAccountName": "sapseudoai",
     "logsMountPath": "/home/site/mounts/logs",
-    "kvSecretsUserRoleId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')]"
+    "kvSecretsUserRoleId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')]",
+    "rbacAdminRoleId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'f58310d9-a9f6-439a-9e8d-f62e7b41a168')]"
   },
   "resources": [
     {
@@ -111,16 +112,61 @@
       }
     },
     {
+      "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+      "apiVersion": "2023-01-31",
+      "name": "[format('{0}-deploy-id', parameters('appName'))]",
+      "location": "[parameters('location')]"
+    },
+    {
       "type": "Microsoft.Authorization/roleAssignments",
       "apiVersion": "2022-04-01",
       "scope": "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]",
-      "name": "[guid(resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName')), resourceId('Microsoft.Web/sites', parameters('appName')), variables('kvSecretsUserRoleId'))]",
+      "name": "[guid(resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deploy-id', parameters('appName'))), variables('rbacAdminRoleId'))]",
       "properties": {
-        "roleDefinitionId": "[variables('kvSecretsUserRoleId')]",
-        "principalId": "[reference(resourceId('Microsoft.Web/sites', parameters('appName')), '2024-04-01', 'full').identity.principalId]",
+        "roleDefinitionId": "[variables('rbacAdminRoleId')]",
+        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deploy-id', parameters('appName'))), '2023-01-31').principalId]",
         "principalType": "ServicePrincipal"
       },
       "dependsOn": [
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deploy-id', parameters('appName')))]",
+        "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deploymentScripts",
+      "apiVersion": "2023-08-01",
+      "name": "[format('{0}-assign-kv-role', parameters('appName'))]",
+      "location": "[parameters('location')]",
+      "kind": "AzureCLI",
+      "identity": {
+        "type": "UserAssigned",
+        "userAssignedIdentities": {
+          "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deploy-id', parameters('appName'))))]": {}
+        }
+      },
+      "properties": {
+        "azCliVersion": "2.52.0",
+        "retentionInterval": "P1D",
+        "forceUpdateTag": "[reference(resourceId('Microsoft.Web/sites', parameters('appName')), '2024-04-01', 'full').identity.principalId]",
+        "environmentVariables": [
+          {
+            "name": "KV_SCOPE",
+            "value": "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]"
+          },
+          {
+            "name": "ROLE_ID",
+            "value": "[variables('kvSecretsUserRoleId')]"
+          },
+          {
+            "name": "PRINCIPAL_ID",
+            "value": "[reference(resourceId('Microsoft.Web/sites', parameters('appName')), '2024-04-01', 'full').identity.principalId]"
+          }
+        ],
+        "scriptContent": "      set -euo pipefail\n      EXISTING=$(az role assignment list \\\n        --scope \"$KV_SCOPE\" \\\n        --role \"$ROLE_ID\" \\\n        --assignee \"$PRINCIPAL_ID\" \\\n        --query \"[0].id\" -o tsv 2>/dev/null || true)\n      if [ -n \"$EXISTING\" ]; then\n        echo \"Role assignment already exists (${EXISTING}) – skipping.\"\n      else\n        az role assignment create \\\n          --scope \"$KV_SCOPE\" \\\n          --role \"$ROLE_ID\" \\\n          --assignee-object-id \"$PRINCIPAL_ID\" \\\n          --assignee-principal-type ServicePrincipal\n        echo \"Role assignment created.\"\n      fi\n    "
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deploy-id', parameters('appName')))]",
+        "[extensionResourceId(resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deploy-id', parameters('appName'))), variables('rbacAdminRoleId')))]",
         "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]",
         "[resourceId('Microsoft.Web/sites', parameters('appName'))]"
       ]
