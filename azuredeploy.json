@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.41.2.15936",
-      "templateHash": "5866280671847987921"
+      "version": "0.42.1.51946",
+      "templateHash": "4257660700872954055"
     }
   },
   "parameters": {
@@ -83,7 +83,6 @@
     "ghcrToken": "",
     "enableAppInsights": true,
     "pseudoaiDataDir": "/home/site/mounts",
-    "debugSessionTtlSeconds": 600,
     "loginRateLimitMax": 200,
     "loginRateLimitWindowSeconds": 60,
     "debugAuthConfig": true,
@@ -296,7 +295,7 @@
         "siteConfig": {
           "linuxFxVersion": "",
           "healthCheckPath": "/api/health",
-          "appSettings": "[flatten(createArray(createArray(createObject('name', 'WEBSITES_PORT', 'value', '80'), createObject('name', 'WEBSITES_ENABLE_APP_SERVICE_STORAGE', 'value', 'true'), createObject('name', 'WEBSITES_CONTAINER_START_TIME_LIMIT', 'value', '600'), createObject('name', 'DOCKER_ENABLE_CI', 'value', 'true'), createObject('name', 'IMAGE_TAG', 'value', parameters('imageTag')), createObject('name', 'DOCKER_REGISTRY_SERVER_URL', 'value', 'https://ghcr.io'), createObject('name', 'API_UPSTREAM', 'value', 'localhost:8081'), createObject('name', 'NLP_UPSTREAM', 'value', 'localhost:5000'), createObject('name', 'PSEUDOAI_DATA_DIR', 'value', variables('pseudoaiDataDir')), createObject('name', 'LOGIN_RATE_LIMIT_MAX', 'value', string(variables('loginRateLimitMax'))), createObject('name', 'LOGIN_RATE_LIMIT_WINDOW_SECONDS', 'value', string(variables('loginRateLimitWindowSeconds'))), createObject('name', 'DEBUG_AUTH_CONFIG', 'value', if(variables('debugAuthConfig'), 'true', 'false')), createObject('name', 'ADMIN_RESET_PASSWORD', 'value', if(parameters('adminResetPassword'), 'true', 'false')), createObject('name', 'USER_RESET_PASSWORD', 'value', if(parameters('userResetPassword'), 'true', 'false')), createObject('name', 'INITIALISE_USERS_AND_ADMINS', 'value', if(parameters('initialiseUsersAndAdmins'), 'true', 'false')), createObject('name', 'JWT_SECRET', 'value', format('@Microsoft.KeyVault(VaultName={0};SecretName=jwt-secret)', variables('keyVaultName'))), createObject('name', 'VAULT_ENCRYPTION_PASSPHRASE', 'value', format('@Microsoft.KeyVault(VaultName={0};SecretName=vault-encryption-passphrase)', variables('keyVaultName'))), createObject('name', 'INITIAL_ADMIN_PASSWORD', 'value', format('@Microsoft.KeyVault(VaultName={0};SecretName=initial-admin-password)', variables('keyVaultName'))), createObject('name', 'INITIAL_USER_PASSWORD', 'value', format('@Microsoft.KeyVault(VaultName={0};SecretName=initial-user-password)', variables('keyVaultName'))), createObject('name', 'OPENAI_API_KEY', 'value', format('@Microsoft.KeyVault(VaultName={0};SecretName=openai-api-key)', variables('keyVaultName'))), createObject('name', 'AZURE_OPENAI_API_KEY', 'value', format('@Microsoft.KeyVault(VaultName={0};SecretName=azure-openai-api-key)', variables('keyVaultName'))), createObject('name', 'GEMINI_API_KEY', 'value', format('@Microsoft.KeyVault(VaultName={0};SecretName=gemini-api-key)', variables('keyVaultName'))), createObject('name', 'SMTP_PASS', 'value', format('@Microsoft.KeyVault(VaultName={0};SecretName=smtp-password)', variables('keyVaultName'))), createObject('name', 'DEBUG_PIN_CODE', 'value', format('@Microsoft.KeyVault(VaultName={0};SecretName=debug-pin-code)', variables('keyVaultName')))), if(variables('useGhcrCredentials'), createArray(createObject('name', 'DOCKER_REGISTRY_SERVER_USERNAME', 'value', variables('ghcrUsername')), createObject('name', 'DOCKER_REGISTRY_SERVER_PASSWORD', 'value', variables('ghcrToken'))), createArray()), if(variables('enableAppInsights'), createArray(createObject('name', 'APPLICATIONINSIGHTS_CONNECTION_STRING', 'value', coalesce(tryGet(if(variables('enableAppInsights'), reference(resourceId('Microsoft.Insights/components', variables('insightsName')), '2020-02-02', 'full'), null()), 'properties', 'ConnectionString'), ''))), createArray())))]"
+          "appSettings": "[flatten(createArray(createArray(createObject('name', 'WEBSITES_PORT', 'value', '80'), createObject('name', 'WEBSITES_ENABLE_APP_SERVICE_STORAGE', 'value', 'true'), createObject('name', 'WEBSITES_CONTAINER_START_TIME_LIMIT', 'value', '600'), createObject('name', 'DOCKER_ENABLE_CI', 'value', 'true'), createObject('name', 'IMAGE_TAG', 'value', parameters('imageTag')), createObject('name', 'DOCKER_REGISTRY_SERVER_URL', 'value', 'https://ghcr.io'), createObject('name', 'API_UPSTREAM', 'value', 'localhost:8081'), createObject('name', 'NLP_UPSTREAM', 'value', 'localhost:5000'), createObject('name', 'PSEUDOAI_DATA_DIR', 'value', variables('pseudoaiDataDir')), createObject('name', 'LOGIN_RATE_LIMIT_MAX', 'value', string(variables('loginRateLimitMax'))), createObject('name', 'LOGIN_RATE_LIMIT_WINDOW_SECONDS', 'value', string(variables('loginRateLimitWindowSeconds'))), createObject('name', 'DEBUG_AUTH_CONFIG', 'value', if(variables('debugAuthConfig'), 'true', 'false')), createObject('name', 'ADMIN_RESET_PASSWORD', 'value', if(parameters('adminResetPassword'), 'true', 'false')), createObject('name', 'USER_RESET_PASSWORD', 'value', if(parameters('userResetPassword'), 'true', 'false')), createObject('name', 'INITIALISE_USERS_AND_ADMINS', 'value', if(parameters('initialiseUsersAndAdmins'), 'true', 'false')), createObject('name', 'JWT_SECRET', 'value', format('@Microsoft.KeyVault(VaultName={0};SecretName=jwt-secret)', variables('keyVaultName'))), createObject('name', 'VAULT_ENCRYPTION_PASSPHRASE', 'value', format('@Microsoft.KeyVault(VaultName={0};SecretName=vault-encryption-passphrase)', variables('keyVaultName'))), createObject('name', 'INITIAL_ADMIN_PASSWORD', 'value', format('@Microsoft.KeyVault(VaultName={0};SecretName=initial-admin-password)', variables('keyVaultName'))), createObject('name', 'INITIAL_USER_PASSWORD', 'value', format('@Microsoft.KeyVault(VaultName={0};SecretName=initial-user-password)', variables('keyVaultName'))), createObject('name', 'OPENAI_API_KEY', 'value', format('@Microsoft.KeyVault(VaultName={0};SecretName=openai-api-key)', variables('keyVaultName'))), createObject('name', 'AZURE_OPENAI_API_KEY', 'value', format('@Microsoft.KeyVault(VaultName={0};SecretName=azure-openai-api-key)', variables('keyVaultName'))), createObject('name', 'GEMINI_API_KEY', 'value', format('@Microsoft.KeyVault(VaultName={0};SecretName=gemini-api-key)', variables('keyVaultName'))), createObject('name', 'SMTP_PASS', 'value', format('@Microsoft.KeyVault(VaultName={0};SecretName=smtp-password)', variables('keyVaultName')))), if(variables('useGhcrCredentials'), createArray(createObject('name', 'DOCKER_REGISTRY_SERVER_USERNAME', 'value', variables('ghcrUsername')), createObject('name', 'DOCKER_REGISTRY_SERVER_PASSWORD', 'value', variables('ghcrToken'))), createArray()), if(variables('enableAppInsights'), createArray(createObject('name', 'APPLICATIONINSIGHTS_CONNECTION_STRING', 'value', coalesce(tryGet(if(variables('enableAppInsights'), reference(resourceId('Microsoft.Insights/components', variables('insightsName')), '2020-02-02', 'full'), null()), 'properties', 'ConnectionString'), ''))), createArray())))]"
         }
       },
       "dependsOn": [
@@ -524,10 +523,6 @@
           {
             "name": "ENABLE_SECRET_DEBUG_ENTRY",
             "value": "[if(parameters('enableSecretDebugEntry'), 'true', 'false')]"
-          },
-          {
-            "name": "DEBUG_SESSION_TTL_SECONDS",
-            "value": "[string(variables('debugSessionTtlSeconds'))]"
           },
           {
             "name": "AZURE_OPENAI_DEPLOYMENT",
