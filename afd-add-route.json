@@ -5,8 +5,172 @@
     "_generator": {
       "name": "bicep",
       "version": "0.42.1.51946",
-      "templateHash": "17652621533509635022"
+      "templateHash": "14923515999126377129"
     }
   },
-  "resources": []
+  "parameters": {
+    "frontDoorProfileName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the existing Azure Front Door Standard/Premium profile."
+      }
+    },
+    "afdEndpointName": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource name of the existing AFD endpoint (the ARM resource name, not the hostname). Find it with: az afd endpoint list --profile-name <name> -g <rg>."
+      }
+    },
+    "appServiceHostname": {
+      "type": "string",
+      "metadata": {
+        "description": "Hostname of the App Service origin (e.g. pseudoai.azurewebsites.net)."
+      }
+    },
+    "originGroupName": {
+      "type": "string",
+      "defaultValue": "pseudoai-origins",
+      "metadata": {
+        "description": "Name for the origin group resource (must be unique within the profile)."
+      }
+    },
+    "originName": {
+      "type": "string",
+      "defaultValue": "pseudoai-appservice",
+      "metadata": {
+        "description": "Name for the origin resource within the origin group."
+      }
+    },
+    "routeName": {
+      "type": "string",
+      "defaultValue": "pseudoai-route",
+      "metadata": {
+        "description": "Name for the route resource."
+      }
+    },
+    "routePatterns": {
+      "type": "array",
+      "defaultValue": [
+        "/*"
+      ],
+      "metadata": {
+        "description": "URL path patterns the route matches."
+      }
+    },
+    "httpsRedirect": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "When true, redirect HTTP requests to HTTPS at the AFD edge (with query string preserved)."
+      }
+    },
+    "healthProbeIntervalSeconds": {
+      "type": "int",
+      "defaultValue": 60,
+      "minValue": 5,
+      "maxValue": 255,
+      "metadata": {
+        "description": "Health-probe interval in seconds (5–255)."
+      }
+    },
+    "addCustomDomain": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "When true, register the custom subdomain (customSubdomain.customDomainZone) with this route. The CNAME must already point to the AFD endpoint hostname before deploying."
+      }
+    },
+    "customSubdomain": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Subdomain label to register (e.g. \"demo\"). Required when addCustomDomain is true."
+      }
+    },
+    "customDomainZone": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Apex DNS zone for the custom domain (e.g. \"pseudoai.nl\"). Required when addCustomDomain is true."
+      }
+    }
+  },
+  "variables": {
+    "customDomainResourceName": "[replace(format('{0}.{1}', parameters('customSubdomain'), parameters('customDomainZone')), '.', '-')]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Cdn/profiles/originGroups",
+      "apiVersion": "2024-02-01",
+      "name": "[format('{0}/{1}', parameters('frontDoorProfileName'), parameters('originGroupName'))]",
+      "properties": {
+        "loadBalancingSettings": {
+          "sampleSize": 4,
+          "successfulSamplesRequired": 3,
+          "additionalLatencyInMilliseconds": 50
+        },
+        "healthProbeSettings": {
+          "probePath": "/api/health",
+          "probeRequestType": "HEAD",
+          "probeProtocol": "Https",
+          "probeIntervalInSeconds": "[parameters('healthProbeIntervalSeconds')]"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Cdn/profiles/originGroups/origins",
+      "apiVersion": "2024-02-01",
+      "name": "[format('{0}/{1}/{2}', parameters('frontDoorProfileName'), parameters('originGroupName'), parameters('originName'))]",
+      "properties": {
+        "hostName": "[parameters('appServiceHostname')]",
+        "originHostHeader": "[parameters('appServiceHostname')]",
+        "httpPort": 80,
+        "httpsPort": 443,
+        "priority": 1,
+        "weight": 1000,
+        "enabledState": "Enabled"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Cdn/profiles/originGroups', parameters('frontDoorProfileName'), parameters('originGroupName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Cdn/profiles/afdEndpoints/routes",
+      "apiVersion": "2024-02-01",
+      "name": "[format('{0}/{1}/{2}', parameters('frontDoorProfileName'), parameters('afdEndpointName'), parameters('routeName'))]",
+      "properties": {
+        "customDomains": "[if(parameters('addCustomDomain'), createArray(createObject('id', resourceId('Microsoft.Cdn/profiles/customDomains', parameters('frontDoorProfileName'), variables('customDomainResourceName')))), createArray())]",
+        "originGroup": {
+          "id": "[resourceId('Microsoft.Cdn/profiles/originGroups', parameters('frontDoorProfileName'), parameters('originGroupName'))]"
+        },
+        "patternsToMatch": "[parameters('routePatterns')]",
+        "supportedProtocols": [
+          "Http",
+          "Https"
+        ],
+        "forwardingProtocol": "HttpsOnly",
+        "httpsRedirect": "[if(parameters('httpsRedirect'), 'Enabled', 'Disabled')]",
+        "linkToDefaultDomain": "[if(parameters('addCustomDomain'), 'Disabled', 'Enabled')]",
+        "enabledState": "Enabled"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Cdn/profiles/originGroups/origins', parameters('frontDoorProfileName'), parameters('originGroupName'), parameters('originName'))]",
+        "[resourceId('Microsoft.Cdn/profiles/originGroups', parameters('frontDoorProfileName'), parameters('originGroupName'))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "originGroupId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.Cdn/profiles/originGroups', parameters('frontDoorProfileName'), parameters('originGroupName'))]"
+    },
+    "routeId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.Cdn/profiles/afdEndpoints/routes', parameters('frontDoorProfileName'), parameters('afdEndpointName'), parameters('routeName'))]"
+    },
+    "afdEndpointHostname": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Cdn/profiles/afdEndpoints', parameters('frontDoorProfileName'), parameters('afdEndpointName')), '2024-02-01').hostName]"
+    }
+  }
 }
