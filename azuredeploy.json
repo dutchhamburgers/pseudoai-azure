@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.42.1.51946",
-      "templateHash": "14049164806249280207"
+      "templateHash": "3860547901130796039"
     }
   },
   "parameters": {
@@ -74,7 +74,7 @@
     },
     "enableDemoFeedback": {
       "type": "bool",
-      "defaultValue": true,
+      "defaultValue": false,
       "metadata": {
         "description": "Enable in-app demo feedback feature for this Azure deployment."
       }
