@@ -5,14 +5,21 @@
     "_generator": {
       "name": "bicep",
       "version": "0.42.1.51946",
-      "templateHash": "4069681289826698358"
+      "templateHash": "4198556020556691377"
     }
   },
   "parameters": {
     "appName": {
       "type": "string",
       "metadata": {
-        "description": "Base name for all resources (e.g. pseudoai-prod). Must be globally unique for the Web App."
+        "description": "Base app name for the deployment. You can pass a full name (e.g. pseudoai-prod) or shorthand (e.g. demo -> demo-pseudoai). Must be globally unique for the Web App."
+      }
+    },
+    "storageAccountName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional storage account override. Leave empty to use defaults (sapseudoai, or sademopseudoai for demo)."
       }
     },
     "location": {
@@ -32,9 +39,11 @@
         "S1",
         "S2",
         "S3",
+        "P0v3",
         "P1v3",
         "P2v3",
-        "P3v3"
+        "P3v3",
+        "P0v4"
       ],
       "metadata": {
         "description": "App Service Plan pricing tier. B1 is the smallest Linux tier that supports containers."
@@ -81,9 +90,12 @@
     }
   },
   "variables": {
-    "planName": "[format('{0}-plan', parameters('appName'))]",
-    "insightsName": "[format('{0}-insights', parameters('appName'))]",
-    "workspaceName": "[format('{0}-logs', parameters('appName'))]",
+    "resolvedAppName": "[if(contains(parameters('appName'), '-'), parameters('appName'), format('{0}-pseudoai', parameters('appName')))]",
+    "defaultStorageAccountName": "[if(equals(toLower(variables('resolvedAppName')), 'demo-pseudoai'), 'sademopseudoai', 'sapseudoai')]",
+    "resolvedStorageAccountName": "[if(not(empty(parameters('storageAccountName'))), toLower(parameters('storageAccountName')), variables('defaultStorageAccountName'))]",
+    "planName": "[format('{0}-plan', variables('resolvedAppName'))]",
+    "insightsName": "[format('{0}-insights', variables('resolvedAppName'))]",
+    "workspaceName": "[format('{0}-logs', variables('resolvedAppName'))]",
     "imageBase": "ghcr.io/dutchhamburgers/pseudoai-azure",
     "useGhcrCredentials": false,
     "ghcrUsername": "dutchhamburgers",
@@ -94,7 +106,6 @@
     "loginRateLimitWindowSeconds": 60,
     "debugAuthConfig": true,
     "keyVaultName": "kv-pseudoai",
-    "storageAccountName": "sapseudoai",
     "logsMountPath": "/home/site/mounts/logs",
     "kvSecretsUserRoleId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')]",
     "rbacAdminRoleId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'f58310d9-a9f6-439a-9e8d-f62e7b41a168')]"
@@ -120,40 +131,40 @@
     {
       "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
       "apiVersion": "2023-01-31",
-      "name": "[format('{0}-deploy-id', parameters('appName'))]",
+      "name": "[format('{0}-deploy-id', variables('resolvedAppName'))]",
       "location": "[parameters('location')]"
     },
     {
       "type": "Microsoft.Authorization/roleAssignments",
       "apiVersion": "2022-04-01",
       "scope": "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]",
-      "name": "[guid(resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deploy-id', parameters('appName'))), variables('rbacAdminRoleId'))]",
+      "name": "[guid(resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deploy-id', variables('resolvedAppName'))), variables('rbacAdminRoleId'))]",
       "properties": {
         "roleDefinitionId": "[variables('rbacAdminRoleId')]",
-        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deploy-id', parameters('appName'))), '2023-01-31').principalId]",
+        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deploy-id', variables('resolvedAppName'))), '2023-01-31').principalId]",
         "principalType": "ServicePrincipal"
       },
       "dependsOn": [
-        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deploy-id', parameters('appName')))]",
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deploy-id', variables('resolvedAppName')))]",
         "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]"
       ]
     },
     {
       "type": "Microsoft.Resources/deploymentScripts",
       "apiVersion": "2023-08-01",
-      "name": "[format('{0}-assign-kv-role', parameters('appName'))]",
+      "name": "[format('{0}-assign-kv-role', variables('resolvedAppName'))]",
       "location": "[parameters('location')]",
       "kind": "AzureCLI",
       "identity": {
         "type": "UserAssigned",
         "userAssignedIdentities": {
-          "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deploy-id', parameters('appName'))))]": {}
+          "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deploy-id', variables('resolvedAppName'))))]": {}
         }
       },
       "properties": {
         "azCliVersion": "2.52.0",
         "retentionInterval": "P1D",
-        "forceUpdateTag": "[reference(resourceId('Microsoft.Web/sites', parameters('appName')), '2024-04-01', 'full').identity.principalId]",
+        "forceUpdateTag": "[reference(resourceId('Microsoft.Web/sites', variables('resolvedAppName')), '2024-04-01', 'full').identity.principalId]",
         "environmentVariables": [
           {
             "name": "KV_SCOPE",
@@ -165,22 +176,22 @@
           },
           {
             "name": "PRINCIPAL_ID",
-            "value": "[reference(resourceId('Microsoft.Web/sites', parameters('appName')), '2024-04-01', 'full').identity.principalId]"
+            "value": "[reference(resourceId('Microsoft.Web/sites', variables('resolvedAppName')), '2024-04-01', 'full').identity.principalId]"
           }
         ],
         "scriptContent": "      set -euo pipefail\n      EXISTING=$(az role assignment list \\\n        --scope \"$KV_SCOPE\" \\\n        --role \"$ROLE_ID\" \\\n        --assignee \"$PRINCIPAL_ID\" \\\n        --query \"[0].id\" -o tsv 2>/dev/null || true)\n      if [ -n \"$EXISTING\" ]; then\n        echo \"Role assignment already exists (${EXISTING}) – skipping.\"\n      else\n        az role assignment create \\\n          --scope \"$KV_SCOPE\" \\\n          --role \"$ROLE_ID\" \\\n          --assignee-object-id \"$PRINCIPAL_ID\" \\\n          --assignee-principal-type ServicePrincipal\n        echo \"Role assignment created.\"\n      fi\n    "
       },
       "dependsOn": [
-        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deploy-id', parameters('appName')))]",
-        "[extensionResourceId(resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deploy-id', parameters('appName'))), variables('rbacAdminRoleId')))]",
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deploy-id', variables('resolvedAppName')))]",
+        "[extensionResourceId(resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deploy-id', variables('resolvedAppName'))), variables('rbacAdminRoleId')))]",
         "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]",
-        "[resourceId('Microsoft.Web/sites', parameters('appName'))]"
+        "[resourceId('Microsoft.Web/sites', variables('resolvedAppName'))]"
       ]
     },
     {
       "type": "Microsoft.Storage/storageAccounts",
       "apiVersion": "2023-01-01",
-      "name": "[variables('storageAccountName')]",
+      "name": "[variables('resolvedStorageAccountName')]",
       "location": "[parameters('location')]",
       "sku": {
         "name": "Standard_LRS"
@@ -195,53 +206,53 @@
     {
       "type": "Microsoft.Storage/storageAccounts/fileServices",
       "apiVersion": "2023-01-01",
-      "name": "[format('{0}/{1}', variables('storageAccountName'), 'default')]",
+      "name": "[format('{0}/{1}', variables('resolvedStorageAccountName'), 'default')]",
       "dependsOn": [
-        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('resolvedStorageAccountName'))]"
       ]
     },
     {
       "type": "Microsoft.Storage/storageAccounts/fileServices/shares",
       "apiVersion": "2023-01-01",
-      "name": "[format('{0}/{1}/{2}', variables('storageAccountName'), 'default', 'system')]",
+      "name": "[format('{0}/{1}/{2}', variables('resolvedStorageAccountName'), 'default', 'system')]",
       "properties": {
         "shareQuota": 5
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Storage/storageAccounts/fileServices', variables('storageAccountName'), 'default')]"
+        "[resourceId('Microsoft.Storage/storageAccounts/fileServices', variables('resolvedStorageAccountName'), 'default')]"
       ]
     },
     {
       "type": "Microsoft.Storage/storageAccounts/fileServices/shares",
       "apiVersion": "2023-01-01",
-      "name": "[format('{0}/{1}/{2}', variables('storageAccountName'), 'default', 'config')]",
+      "name": "[format('{0}/{1}/{2}', variables('resolvedStorageAccountName'), 'default', 'config')]",
       "properties": {
         "shareQuota": 1
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Storage/storageAccounts/fileServices', variables('storageAccountName'), 'default')]"
+        "[resourceId('Microsoft.Storage/storageAccounts/fileServices', variables('resolvedStorageAccountName'), 'default')]"
       ]
     },
     {
       "type": "Microsoft.Storage/storageAccounts/fileServices/shares",
       "apiVersion": "2023-01-01",
-      "name": "[format('{0}/{1}/{2}', variables('storageAccountName'), 'default', 'logs')]",
+      "name": "[format('{0}/{1}/{2}', variables('resolvedStorageAccountName'), 'default', 'logs')]",
       "properties": {
         "shareQuota": 10
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Storage/storageAccounts/fileServices', variables('storageAccountName'), 'default')]"
+        "[resourceId('Microsoft.Storage/storageAccounts/fileServices', variables('resolvedStorageAccountName'), 'default')]"
       ]
     },
     {
       "type": "Microsoft.Storage/storageAccounts/fileServices/shares",
       "apiVersion": "2023-01-01",
-      "name": "[format('{0}/{1}/{2}', variables('storageAccountName'), 'default', 'userdata')]",
+      "name": "[format('{0}/{1}/{2}', variables('resolvedStorageAccountName'), 'default', 'userdata')]",
       "properties": {
         "shareQuota": 1
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Storage/storageAccounts/fileServices', variables('storageAccountName'), 'default')]"
+        "[resourceId('Microsoft.Storage/storageAccounts/fileServices', variables('resolvedStorageAccountName'), 'default')]"
       ]
     },
     {
@@ -290,7 +301,7 @@
     {
       "type": "Microsoft.Web/sites",
       "apiVersion": "2024-04-01",
-      "name": "[parameters('appName')]",
+      "name": "[variables('resolvedAppName')]",
       "location": "[parameters('location')]",
       "kind": "app,linux,container",
       "identity": {
@@ -313,46 +324,46 @@
     {
       "type": "Microsoft.Web/sites/config",
       "apiVersion": "2024-04-01",
-      "name": "[format('{0}/{1}', parameters('appName'), 'azurestorageaccounts')]",
+      "name": "[format('{0}/{1}', variables('resolvedAppName'), 'azurestorageaccounts')]",
       "properties": {
         "config": {
           "type": "AzureFiles",
-          "accountName": "[variables('storageAccountName')]",
+          "accountName": "[variables('resolvedStorageAccountName')]",
           "shareName": "config",
           "mountPath": "[format('{0}/config', variables('pseudoaiDataDir'))]",
-          "accessKey": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2023-01-01').keys[0].value]"
+          "accessKey": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('resolvedStorageAccountName')), '2023-01-01').keys[0].value]"
         },
         "system": {
           "type": "AzureFiles",
-          "accountName": "[variables('storageAccountName')]",
+          "accountName": "[variables('resolvedStorageAccountName')]",
           "shareName": "system",
           "mountPath": "[format('{0}/system', variables('pseudoaiDataDir'))]",
-          "accessKey": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2023-01-01').keys[0].value]"
+          "accessKey": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('resolvedStorageAccountName')), '2023-01-01').keys[0].value]"
         },
         "userdata": {
           "type": "AzureFiles",
-          "accountName": "[variables('storageAccountName')]",
+          "accountName": "[variables('resolvedStorageAccountName')]",
           "shareName": "userdata",
           "mountPath": "[format('{0}/userdata', variables('pseudoaiDataDir'))]",
-          "accessKey": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2023-01-01').keys[0].value]"
+          "accessKey": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('resolvedStorageAccountName')), '2023-01-01').keys[0].value]"
         },
         "logs": {
           "type": "AzureFiles",
-          "accountName": "[variables('storageAccountName')]",
+          "accountName": "[variables('resolvedStorageAccountName')]",
           "shareName": "logs",
           "mountPath": "[variables('logsMountPath')]",
-          "accessKey": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2023-01-01').keys[0].value]"
+          "accessKey": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('resolvedStorageAccountName')), '2023-01-01').keys[0].value]"
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
-        "[resourceId('Microsoft.Web/sites', parameters('appName'))]"
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('resolvedStorageAccountName'))]",
+        "[resourceId('Microsoft.Web/sites', variables('resolvedAppName'))]"
       ]
     },
     {
       "type": "Microsoft.Web/sites/sitecontainers",
       "apiVersion": "2024-04-01",
-      "name": "[format('{0}/{1}', parameters('appName'), 'web')]",
+      "name": "[format('{0}/{1}', variables('resolvedAppName'), 'web')]",
       "properties": {
         "image": "[format('{0}/web:{1}', variables('imageBase'), parameters('imageTag'))]",
         "isMain": true,
@@ -372,13 +383,13 @@
         ]
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Web/sites', parameters('appName'))]"
+        "[resourceId('Microsoft.Web/sites', variables('resolvedAppName'))]"
       ]
     },
     {
       "type": "Microsoft.Web/sites/sitecontainers",
       "apiVersion": "2024-04-01",
-      "name": "[format('{0}/{1}', parameters('appName'), 'api-php')]",
+      "name": "[format('{0}/{1}', variables('resolvedAppName'), 'api-php')]",
       "properties": {
         "image": "[format('{0}/api-php:{1}', variables('imageBase'), parameters('imageTag'))]",
         "isMain": false,
@@ -389,11 +400,11 @@
         "environmentVariables": [
           {
             "name": "FRONTEND_BASE_URL",
-            "value": "[format('https://{0}.azurewebsites.net', parameters('appName'))]"
+            "value": "[format('https://{0}.azurewebsites.net', variables('resolvedAppName'))]"
           },
           {
             "name": "CORS_ALLOWED_ORIGINS",
-            "value": "[format('https://{0}.azurewebsites.net', parameters('appName'))]"
+            "value": "[format('https://{0}.azurewebsites.net', variables('resolvedAppName'))]"
           },
           {
             "name": "PSEUDOAI_DATA_DIR",
@@ -570,14 +581,14 @@
         ]
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Web/sites', parameters('appName'))]",
-        "[resourceId('Microsoft.Web/sites/config', parameters('appName'), 'azurestorageaccounts')]"
+        "[resourceId('Microsoft.Web/sites', variables('resolvedAppName'))]",
+        "[resourceId('Microsoft.Web/sites/config', variables('resolvedAppName'), 'azurestorageaccounts')]"
       ]
     },
     {
       "type": "Microsoft.Web/sites/sitecontainers",
       "apiVersion": "2024-04-01",
-      "name": "[format('{0}/{1}', parameters('appName'), 'nlp-python')]",
+      "name": "[format('{0}/{1}', variables('resolvedAppName'), 'nlp-python')]",
       "properties": {
         "image": "[format('{0}/nlp-python:{1}', variables('imageBase'), parameters('imageTag'))]",
         "isMain": false,
@@ -597,7 +608,7 @@
         ]
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Web/sites', parameters('appName'))]"
+        "[resourceId('Microsoft.Web/sites', variables('resolvedAppName'))]"
       ]
     }
   ],
@@ -607,14 +618,14 @@
       "metadata": {
         "description": "The public URL of the deployed PseudoAI application."
       },
-      "value": "[format('https://{0}', reference(resourceId('Microsoft.Web/sites', parameters('appName')), '2024-04-01').defaultHostName)]"
+      "value": "[format('https://{0}', reference(resourceId('Microsoft.Web/sites', variables('resolvedAppName')), '2024-04-01').defaultHostName)]"
     },
     "webAppId": {
       "type": "string",
       "metadata": {
         "description": "Resource ID of the Web App."
       },
-      "value": "[resourceId('Microsoft.Web/sites', parameters('appName'))]"
+      "value": "[resourceId('Microsoft.Web/sites', variables('resolvedAppName'))]"
     },
     "keyVaultName": {
       "type": "string",
@@ -630,19 +641,19 @@
       },
       "value": "[reference(resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName')), '2023-07-01').vaultUri]"
     },
-    "storageAccountName": {
+    "deployedStorageAccountName": {
       "type": "string",
       "metadata": {
         "description": "Name of the Storage Account used for persistent data and logs."
       },
-      "value": "[variables('storageAccountName')]"
+      "value": "[variables('resolvedStorageAccountName')]"
     },
     "systemIdentityPrincipalId": {
       "type": "string",
       "metadata": {
         "description": "Principal ID of the system-assigned managed identity of the App Service."
       },
-      "value": "[reference(resourceId('Microsoft.Web/sites', parameters('appName')), '2024-04-01', 'full').identity.principalId]"
+      "value": "[reference(resourceId('Microsoft.Web/sites', variables('resolvedAppName')), '2024-04-01', 'full').identity.principalId]"
     }
   }
 }
