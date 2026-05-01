@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.42.1.51946",
-      "templateHash": "10857071246002308663"
+      "templateHash": "641338878649454346"
     }
   },
   "parameters": {
@@ -14,14 +14,14 @@
       "minLength": 2,
       "maxLength": 14,
       "metadata": {
-        "description": "Deployment environment identifier (e.g. prod, demo, test, acme). Used to derive all resource names: web app <env>-pseudoai, storage account sapseudoai<env>, App Service Plan <env>-pseudoai-plan, etc. Must be lowercase alphanumeric, 2–14 characters."
+        "description": "Deployment environment identifier (e.g. prd, test, test_tp, test-js). Used to derive resource names. The storage-account suffix is normalized by removing hyphens. Keep length 2-14."
       }
     },
     "storageAccountName": {
       "type": "string",
       "defaultValue": "",
       "metadata": {
-        "description": "Optional storage account name override. Leave empty to use the default sapseudoai<env>."
+        "description": "Optional storage account name override. Leave empty to use the default sapseudoai<env-without-hyphens>."
       }
     },
     "location": {
@@ -35,6 +35,7 @@
       "type": "string",
       "defaultValue": "B1",
       "allowedValues": [
+        "F1",
         "B1",
         "B2",
         "B3",
@@ -93,7 +94,8 @@
   },
   "variables": {
     "resolvedAppName": "[format('{0}-pseudoai', toLower(parameters('env')))]",
-    "resolvedStorageAccountName": "[if(not(empty(parameters('storageAccountName'))), toLower(parameters('storageAccountName')), format('sapseudoai{0}', toLower(parameters('env'))))]",
+    "normalizedEnvForStorage": "[replace(toLower(parameters('env')), '-', '')]",
+    "resolvedStorageAccountName": "[if(not(empty(parameters('storageAccountName'))), toLower(parameters('storageAccountName')), format('sapseudoai{0}', variables('normalizedEnvForStorage')))]",
     "planName": "[format('{0}-plan', variables('resolvedAppName'))]",
     "insightsName": "[format('{0}-insights', variables('resolvedAppName'))]",
     "workspaceName": "[format('{0}-logs', variables('resolvedAppName'))]",
