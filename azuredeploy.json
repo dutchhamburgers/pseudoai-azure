@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.42.1.51946",
-      "templateHash": "641338878649454346"
+      "templateHash": "11983355682380839253"
     }
   },
   "parameters": {
@@ -559,6 +559,10 @@
           {
             "name": "AI_MODEL_DEFAULT",
             "value": "gpt-4o-mini"
+          },
+          {
+            "name": "LLM_MODE_DEFAULT",
+            "value": "EXTERNAL_LLM"
           },
           {
             "name": "AI_MAX_OUTPUT_TOKENS_CAP",
