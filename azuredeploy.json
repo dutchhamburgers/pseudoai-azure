@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.43.8.12551",
-      "templateHash": "2750081941310375010"
+      "templateHash": "8444644539478346425"
     }
   },
   "parameters": {
@@ -22,6 +22,13 @@
       "defaultValue": "",
       "metadata": {
         "description": "Optional storage account name override. Leave empty to use the default sapseudoai<env-without-hyphens>."
+      }
+    },
+    "keyVaultResourceGroupName": {
+      "type": "string",
+      "defaultValue": "rg-pseudoai",
+      "metadata": {
+        "description": "Resource group that contains the shared Key Vault (kv-pseudoai)."
       }
     },
     "location": {
@@ -147,32 +154,6 @@
       "location": "[parameters('location')]"
     },
     {
-      "type": "Microsoft.Authorization/roleAssignments",
-      "apiVersion": "2022-04-01",
-      "name": "[guid(resourceGroup().id, resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deploy-id', variables('resolvedAppName'))), variables('kvContributorRoleId'))]",
-      "properties": {
-        "roleDefinitionId": "[variables('kvContributorRoleId')]",
-        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deploy-id', variables('resolvedAppName'))), '2023-01-31').principalId]",
-        "principalType": "ServicePrincipal"
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deploy-id', variables('resolvedAppName')))]"
-      ]
-    },
-    {
-      "type": "Microsoft.Authorization/roleAssignments",
-      "apiVersion": "2022-04-01",
-      "name": "[guid(resourceGroup().id, resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deploy-id', variables('resolvedAppName'))), variables('rbacAdminRoleId'))]",
-      "properties": {
-        "roleDefinitionId": "[variables('rbacAdminRoleId')]",
-        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deploy-id', variables('resolvedAppName'))), '2023-01-31').principalId]",
-        "principalType": "ServicePrincipal"
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deploy-id', variables('resolvedAppName')))]"
-      ]
-    },
-    {
       "type": "Microsoft.Resources/deploymentScripts",
       "apiVersion": "2023-08-01",
       "name": "[format('{0}-kv-setup', variables('resolvedAppName'))]",
@@ -203,7 +184,7 @@
           },
           {
             "name": "RESOURCE_GROUP",
-            "value": "[resourceGroup().name]"
+            "value": "[parameters('keyVaultResourceGroupName')]"
           },
           {
             "name": "ROLE_ID",
@@ -218,8 +199,7 @@
       },
       "dependsOn": [
         "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deploy-id', variables('resolvedAppName')))]",
-        "[resourceId('Microsoft.Authorization/roleAssignments', guid(resourceGroup().id, resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deploy-id', variables('resolvedAppName'))), variables('kvContributorRoleId')))]",
-        "[resourceId('Microsoft.Authorization/roleAssignments', guid(resourceGroup().id, resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deploy-id', variables('resolvedAppName'))), variables('rbacAdminRoleId')))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('keyVaultResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-kv-script-rbac', variables('resolvedAppName')))]",
         "[resourceId('Microsoft.Web/sites', variables('resolvedAppName'))]"
       ]
     },
@@ -674,6 +654,94 @@
       },
       "dependsOn": [
         "[resourceId('Microsoft.Web/sites', variables('resolvedAppName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "[format('{0}-kv-script-rbac', variables('resolvedAppName'))]",
+      "resourceGroup": "[parameters('keyVaultResourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "principalId": {
+            "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deploy-id', variables('resolvedAppName'))), '2023-01-31').principalId]"
+          },
+          "principalResourceId": {
+            "value": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deploy-id', variables('resolvedAppName')))]"
+          },
+          "kvContributorRoleId": {
+            "value": "[variables('kvContributorRoleId')]"
+          },
+          "rbacAdminRoleId": {
+            "value": "[variables('rbacAdminRoleId')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.43.8.12551",
+              "templateHash": "3219042987880559983"
+            }
+          },
+          "parameters": {
+            "principalId": {
+              "type": "string",
+              "metadata": {
+                "description": "Principal ID of the deployment-script managed identity."
+              }
+            },
+            "principalResourceId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource ID of the deployment-script managed identity (used for stable role-assignment name GUIDs)."
+              }
+            },
+            "kvContributorRoleId": {
+              "type": "string",
+              "metadata": {
+                "description": "Role definition ID for Key Vault Contributor."
+              }
+            },
+            "rbacAdminRoleId": {
+              "type": "string",
+              "metadata": {
+                "description": "Role definition ID for Role Based Access Control Administrator."
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "name": "[guid(resourceGroup().id, parameters('principalResourceId'), parameters('kvContributorRoleId'))]",
+              "properties": {
+                "roleDefinitionId": "[parameters('kvContributorRoleId')]",
+                "principalId": "[parameters('principalId')]",
+                "principalType": "ServicePrincipal"
+              }
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "name": "[guid(resourceGroup().id, parameters('principalResourceId'), parameters('rbacAdminRoleId'))]",
+              "properties": {
+                "roleDefinitionId": "[parameters('rbacAdminRoleId')]",
+                "principalId": "[parameters('principalId')]",
+                "principalType": "ServicePrincipal"
+              }
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deploy-id', variables('resolvedAppName')))]"
       ]
     }
   ],
